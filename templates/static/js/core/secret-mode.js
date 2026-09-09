@@ -82,7 +82,7 @@
       'iframe{border:0;width:100%;height:100%;display:block}' +
       '</style></head><body>' +
       '<iframe id="secretSiteFrame" src="' + siteUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
-      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){try{window.close()}catch(_){}}});<\\/script>' +
+      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){try{var f=document.getElementById("secretSiteFrame");var target="/";if(f&&f.contentWindow){target=f.contentWindow.location.href;}window.location.href=target;}catch(_){window.location.href="/";}}});<\\/script>' +
       '</body></html>';
 
     try {
@@ -158,8 +158,8 @@
     var shellPage = markShellPage();
     var authenticated = markAuthenticatedVisit();
 
-    // A fresh browser tab/window must pass through the existing password page first.
-    // The shell itself is exempt because it carries the secret-shell session marker.
+    // A fresh browser tab/window must pass through the password page first.
+    // The secret shell itself is exempt because it carries the shell session marker.
     if (!shellPage && !isShellPage() && !authenticated && !hasUnlockedVisit()) {
       window.location.replace('/login');
       return;
