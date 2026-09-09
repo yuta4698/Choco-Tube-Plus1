@@ -172,7 +172,7 @@ async def api_login(request: Request):
 
     password = (data.get("password") or "").strip()
 
-    if password and password != HARDCODED_PASSWORD:
+    if password != HARDCODED_PASSWORD:
         return JSONResponse({"ok": False, "message": "パスワードが正しくありません"}, status_code=401)
 
     seen_welcome = request.cookies.get(WELCOME_COOKIE_NAME)
