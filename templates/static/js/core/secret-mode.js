@@ -3,11 +3,13 @@
 
   var STORAGE_KEY = 'choco-secret-mode';
   var SHELL_KEY = 'choco-secret-shell';
+  var VISIT_KEY = 'choco-visit-unlocked';
   var ON = 'on';
   var SHELL_NAME = 'chocoSecretShell';
 
   function isEnabled() {
-    return localStorage.getItem(STORAGE_KEY) === ON;
+    // Secret mode is ON by default. The sidebar button can explicitly turn it OFF.
+    return localStorage.getItem(STORAGE_KEY) !== 'off';
   }
 
   function isShellPage() {
@@ -23,12 +25,34 @@
       var url = new URL(window.location.href);
       if (url.searchParams.get('__secret_shell') === '1') {
         sessionStorage.setItem(SHELL_KEY, ON);
+        sessionStorage.setItem(VISIT_KEY, ON);
         url.searchParams.delete('__secret_shell');
         history.replaceState({}, '', url.pathname + url.search + url.hash);
         return true;
       }
     } catch (e) {}
     return isShellPage();
+  }
+
+  function markAuthenticatedVisit() {
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('__secret_auth') === '1') {
+        sessionStorage.setItem(VISIT_KEY, ON);
+        url.searchParams.delete('__secret_auth');
+        history.replaceState({}, '', url.pathname + url.search + url.hash);
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function hasUnlockedVisit() {
+    try {
+      return sessionStorage.getItem(VISIT_KEY) === ON;
+    } catch (e) {
+      return false;
+    }
   }
 
   function addShellParam(url) {
@@ -52,13 +76,13 @@
     var shell = window.open('about:blank', SHELL_NAME);
     if (!shell) return false;
 
-    var siteUrl = addShellParam(window.location.href);
-    var html = '<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Choco-tube-plus</title><style>' +
+    var siteUrl = addShellParam(window.location.origin + window.location.pathname + window.location.search + window.location.hash);
+    var html = '<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Private Access</title><style>' +
       'html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}' +
       'iframe{border:0;width:100%;height:100%;display:block}' +
       '</style></head><body>' +
       '<iframe id="secretSiteFrame" src="' + siteUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
-      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){try{window.close()}catch(_){}}});<\/script>' +
+      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){try{window.close()}catch(_){}}});<\\/script>' +
       '</body></html>';
 
     try {
@@ -132,11 +156,21 @@
 
   function startSecretMode() {
     var shellPage = markShellPage();
+    var authenticated = markAuthenticatedVisit();
+
+    // A fresh browser tab/window must pass through the existing password page first.
+    // The shell itself is exempt because it carries the secret-shell session marker.
+    if (!shellPage && !isShellPage() && !authenticated && !hasUnlockedVisit()) {
+      window.location.replace('/login');
+      return;
+    }
+
     if (!isEnabled() || shellPage || isShellPage()) return;
 
-    // When secret mode is already ON, open the site inside an about:blank shell
-    // immediately. Video links inside the shell are left completely untouched.
-    openSecretShell();
+    // After successful password authentication, open the site inside about:blank.
+    if (authenticated || !isShellPage()) {
+      openSecretShell();
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function () {
