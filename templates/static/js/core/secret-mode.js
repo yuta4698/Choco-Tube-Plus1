@@ -68,8 +68,22 @@
     btn.title = enabled ? 'シークレットモード：ON（動画はabout:blankで開きます）' : 'シークレットモード：OFF';
   }
 
+  function bindButton(btn) {
+    if (!btn || btn.dataset.secretBound === '1') return;
+    btn.dataset.secretBound = '1';
+    updateButton(btn);
+    btn.addEventListener('click', function () {
+      localStorage.setItem(STORAGE_KEY, isEnabled() ? 'off' : ON);
+      updateButton(btn);
+    });
+  }
+
   function addButton() {
-    if (document.getElementById('secretModeBtn')) return;
+    var existing = document.getElementById('secretModeBtn');
+    if (existing) {
+      bindButton(existing);
+      return;
+    }
 
     var footer = document.querySelector('.sidebar-footer');
     if (!footer) return;
@@ -79,13 +93,7 @@
     btn.className = 'sidebar-theme-btn secret-mode-btn';
     btn.type = 'button';
     btn.innerHTML = '<span class="secret-lock">◉</span><span data-secret-label></span>';
-    updateButton(btn);
-
-    btn.addEventListener('click', function () {
-      localStorage.setItem(STORAGE_KEY, isEnabled() ? 'off' : ON);
-      updateButton(btn);
-    });
-
+    bindButton(btn);
     footer.insertBefore(btn, footer.firstChild);
   }
 
