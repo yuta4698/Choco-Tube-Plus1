@@ -3,6 +3,7 @@
 
   var STORAGE_KEY = 'choco-secret-mode';
   var SHELL_KEY = 'choco-secret-shell';
+  var VISIT_KEY = 'choco-visit-unlocked';
   var ON = 'on';
   var OFF = 'off';
   var SHELL_NAME = 'chocoSecretShell';
@@ -76,8 +77,6 @@
     updateButton(btn);
 
     if (isShellFrame()) {
-      // Already inside the about:blank shell. Keep the shell and simply reload
-      // this frame so ON takes effect without opening a second window.
       location.reload();
       return;
     }
@@ -89,8 +88,7 @@
       return;
     }
 
-    // Replace the original Choco-Tube history entry with Google. The usable
-    // Choco-Tube page now lives only inside the about:blank shell.
+    // Replace the original tab's Choco-Tube entry with Google.
     setTimeout(function () {
       try { location.replace(GOOGLE_URL); }
       catch (e) { location.href = GOOGLE_URL; }
@@ -103,8 +101,9 @@
     updateButton(btn);
 
     if (isShellFrame()) {
-      // The top-level browsing context is about:blank. Ask it to leave the
-      // shell and show the same Choco-Tube page normally.
+      // Keep this top-level about:blank tab authenticated when it becomes
+      // a normal Choco-Tube page after the shell is disabled.
+      try { sessionStorage.setItem(VISIT_KEY, ON); } catch (e) {}
       try {
         window.parent.postMessage({ type: 'choco-secret-off', path: shellReturnPath() }, location.origin);
       } catch (e) {
@@ -146,22 +145,18 @@
 
     var shellFrame = markShellFrame();
     if (!shellFrame) {
-      // Normal top-level page: it must be unlocked through the login screen.
-      // The login page itself is outside base.html and is therefore unaffected.
       var unlocked = false;
-      try { unlocked = sessionStorage.getItem('choco-visit-unlocked') === ON; } catch (e) {}
+      try { unlocked = sessionStorage.getItem(VISIT_KEY) === ON; } catch (e) {}
       if (!unlocked) {
         location.replace('/login');
         return;
       }
     }
 
-    // If we arrived here as the authenticated login target, consume the marker
-    // without creating another navigation entry.
     try {
       var u = new URL(location.href);
       if (u.searchParams.get('__secret_auth') === '1') {
-        sessionStorage.setItem('choco-visit-unlocked', ON);
+        sessionStorage.setItem(VISIT_KEY, ON);
         u.searchParams.delete('__secret_auth');
         history.replaceState({}, '', u.pathname + u.search + u.hash);
       }
