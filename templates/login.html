@@ -8,27 +8,34 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#1a0e08;--accent:#8b4513;--bright:#d2691e;--cyan:#f4a460;--text:#f5ead8;--muted:#b8a48f;--border:rgba(210,140,70,.22);--surface:rgba(45,26,16,.9)}
 html,body{width:100%;height:100%;background:radial-gradient(900px 600px at 10% -10%,rgba(210,105,30,.14),transparent 60%),radial-gradient(700px 500px at 90% 0%,rgba(139,69,19,.18),transparent 65%),var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(--text);overflow:hidden}
 #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.035) 2px,rgba(0,0,0,.035) 4px)}
-#mainPage{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px}
-.login-wrap{width:min(420px,92vw);padding:2.4rem 2.2rem 2rem;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 0 0 1px rgba(210,140,70,.08),0 0 40px rgba(139,69,19,.3),0 0 80px rgba(210,105,30,.12),0 8px 32px rgba(0,0,0,.6);backdrop-filter:blur(16px)}
-.login-header{text-align:center;margin-bottom:1.8rem}.login-logo{font:1.5rem 'Share Tech Mono',monospace;letter-spacing:.03em;display:block;margin-bottom:.35rem}.logo-inv{color:var(--bright)}.logo-tube{color:var(--cyan)}.login-subtitle{font-size:.78rem;color:var(--muted);letter-spacing:.06em}.login-divider{display:flex;align-items:center;gap:.7rem;margin-bottom:1.6rem}.login-divider:before,.login-divider:after{content:'';height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--border),transparent)}.login-divider span{font:.68rem 'Share Tech Mono',monospace;color:rgba(148,163,184,.4);letter-spacing:.08em;white-space:nowrap}
-.login-form{display:flex;flex-direction:column;gap:1rem}.field-wrap{display:flex;flex-direction:column;gap:.32rem}.field-label{font:.72rem 'Share Tech Mono',monospace;color:var(--muted);letter-spacing:.08em}.field-input-wrap{position:relative;display:flex;align-items:center}.field-icon{position:absolute;left:.85rem;color:rgba(148,163,184,.45);pointer-events:none}.field-input{width:100%;padding:.72rem 2.7rem .72rem 2.4rem;background:rgba(5,9,20,.7);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.9rem;outline:none}.field-input:focus{border-color:rgba(210,105,30,.65);box-shadow:0 0 0 3px rgba(210,105,30,.12),0 0 16px rgba(210,105,30,.15)}.field-input::placeholder{color:rgba(148,163,184,.35)}.pw-toggle{position:absolute;right:.65rem;background:none;border:0;color:rgba(148,163,184,.65);cursor:pointer;padding:5px;font-size:.85rem}.pw-toggle:hover{color:var(--bright)}
+#intro{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;pointer-events:none;transition:opacity .45s ease}#intro.hidden{opacity:0}
+.intro-logo{font:clamp(1.8rem,5vw,3.2rem) 'Share Tech Mono',monospace;letter-spacing:.04em;line-height:1;opacity:0;transform:translateY(12px)}.intro-logo.visible{opacity:1;transform:translateY(0);transition:opacity .6s ease,transform .6s ease}.logo-inv{color:var(--bright)}.logo-tube{color:var(--cyan)}
+.intro-tagline{font:.85rem 'Share Tech Mono',monospace;color:var(--muted);letter-spacing:.12em;opacity:0}.intro-tagline.visible{opacity:1;transition:opacity .5s ease .3s}.intro-bar{width:min(260px,60vw);height:2px;background:rgba(139,69,19,.18);border-radius:999px;overflow:hidden;opacity:0}.intro-bar.visible{opacity:1;transition:opacity .4s ease .5s}.intro-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:999px;box-shadow:0 0 12px rgba(210,105,30,.7)}
+.intro-hint{font:.72rem 'Share Tech Mono',monospace;color:rgba(148,163,184,.5);letter-spacing:.1em;opacity:0}.intro-hint.visible{opacity:1;transition:opacity .4s ease}.glitch-active{animation:glitch1 .25s steps(1) forwards}@keyframes glitch1{0%,95%,100%{clip-path:none;transform:none}96%{clip-path:inset(20% 0 60% 0);transform:translateX(-4px)}97%{clip-path:inset(50% 0 20% 0);transform:translateX(4px)}98%{clip-path:inset(10% 0 80% 0);transform:translateX(-2px)}99%{clip-path:none;transform:none}}
+#mainPage{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .7s ease;overflow-y:auto;padding:20px}#mainPage.visible{opacity:1;pointer-events:auto}
+.login-wrap{width:min(420px,92vw);padding:2.4rem 2.2rem 2rem;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 0 0 1px rgba(210,140,70,.08),0 0 40px rgba(139,69,19,.3),0 0 80px rgba(210,105,30,.12),0 8px 32px rgba(0,0,0,.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);position:relative;transform:translateY(24px) scale(.97);transition:transform .7s cubic-bezier(.22,1,.36,1),opacity .7s ease}.main-visible .login-wrap{transform:translateY(0) scale(1)}
+.login-wrap::before{content:'';position:absolute;top:-60px;right:-60px;width:180px;height:180px;background:radial-gradient(circle,rgba(210,105,30,.28),transparent 70%);pointer-events:none}.login-wrap::after{content:'';position:absolute;bottom:-60px;left:-60px;width:160px;height:160px;background:radial-gradient(circle,rgba(244,164,96,.18),transparent 70%);pointer-events:none}
+.login-header{text-align:center;margin-bottom:1.8rem}.login-logo{font:1.5rem 'Share Tech Mono',monospace;letter-spacing:.03em;display:block;margin-bottom:.35rem}.login-logo .logo-inv{color:var(--bright)}.login-logo .logo-tube{color:var(--cyan)}.login-subtitle{font-size:.78rem;color:var(--muted);letter-spacing:.06em}.login-divider{display:flex;align-items:center;gap:.7rem;margin-bottom:1.6rem}.login-divider:before,.login-divider:after{content:'';height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--border),transparent)}.login-divider span{font:.68rem 'Share Tech Mono',monospace;color:rgba(148,163,184,.4);letter-spacing:.08em;white-space:nowrap}
+.login-form{display:flex;flex-direction:column;gap:1rem}.field-wrap{display:flex;flex-direction:column;gap:.32rem}.field-label{font:.72rem 'Share Tech Mono',monospace;color:var(--muted);letter-spacing:.08em}.field-input-wrap{position:relative;display:flex;align-items:center}.field-icon{position:absolute;left:.85rem;color:rgba(148,163,184,.45);pointer-events:none;transition:color .2s}.field-input-wrap:focus-within .field-icon{color:var(--bright)}.field-input{width:100%;padding:.72rem 2.7rem .72rem 2.4rem;background:rgba(5,9,20,.7);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.9rem;outline:none}.field-input:focus{border-color:rgba(210,105,30,.65);box-shadow:0 0 0 3px rgba(210,105,30,.12),0 0 16px rgba(210,105,30,.15)}.field-input::placeholder{color:rgba(148,163,184,.35)}.pw-toggle{position:absolute;right:.65rem;background:none;border:0;color:rgba(148,163,184,.65);cursor:pointer;padding:5px;font-size:.85rem}.pw-toggle:hover{color:var(--bright)}
 .login-options{display:flex;align-items:center;justify-content:space-between;font-size:.75rem}.login-remember{display:flex;align-items:center;gap:.45rem;color:var(--muted);cursor:pointer;user-select:none}.login-remember input{width:15px;height:15px;accent-color:var(--accent)}.login-forgot{color:rgba(210,140,70,.7);text-decoration:none}.login-forgot:hover{color:var(--bright)}
-.login-btn{width:100%;margin-top:.4rem;padding:.82rem;background:linear-gradient(135deg,#8b4513,#c46a25);border:0;border-radius:10px;color:#f5ead8;font-size:.92rem;font-weight:600;letter-spacing:.04em;cursor:pointer;box-shadow:0 0 20px rgba(139,69,19,.4)}.login-btn:disabled{opacity:.6;cursor:wait}.login-error{font-size:.76rem;color:#f87171;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:.55rem .75rem;display:none}.login-error.show{display:block}.login-footer{text-align:center;margin-top:1.2rem;color:rgba(184,164,143,.65);font-size:.68rem;font-family:'Share Tech Mono',monospace;line-height:1.6}
+.login-btn{width:100%;margin-top:.4rem;padding:.82rem;background:linear-gradient(135deg,#8b4513,#c46a25);border:0;border-radius:10px;color:#f5ead8;font-size:.92rem;font-weight:600;letter-spacing:.04em;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 0 20px rgba(139,69,19,.4);transition:.2s}.login-btn:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(210,105,30,.55)}.login-btn:disabled{opacity:.6;cursor:wait}.login-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent 60%);pointer-events:none}.btn-text{transition:opacity .2s}.btn-spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0}.login-btn.loading .btn-text{opacity:0}.login-btn.loading .btn-spinner{opacity:1}.btn-spinner-ring{width:20px;height:20px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.login-error{font-size:.76rem;color:#f87171;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:8px;padding:.55rem .75rem;display:none}.login-error.show{display:block}.login-footer{text-align:center;margin-top:1.2rem;color:rgba(184,164,143,.65);font:.68rem 'Share Tech Mono',monospace;line-height:1.6}
 </style>
 </head>
 <body>
 <canvas id="bgCanvas"></canvas><div class="scanlines"></div>
+<div id="intro"><div class="intro-logo" id="introLogo"><span class="logo-inv">CHOCO</span><span class="logo-tube">-TUBE</span></div><div class="intro-tagline" id="introTagline">PRIVATE ACCESS SYSTEM</div><div class="intro-bar" id="introBar"><div class="intro-bar-fill" id="introBarFill"></div></div><div class="intro-hint" id="introHint">INITIALIZING SECURE SESSION...</div></div>
 <div id="mainPage"><div class="login-wrap">
 <div class="login-header"><span class="login-logo"><span class="logo-inv">PRIVATE</span><span class="logo-tube"> ACCESS</span></span><div class="login-subtitle">セキュアアクセス</div></div>
 <div class="login-divider"><span>ACCESS CONTROL</span></div>
 <form id="loginForm" class="login-form" autocomplete="off">
 <div class="field-wrap"><label class="field-label" for="password">ACCESS KEY</label><div class="field-input-wrap"><span class="field-icon">◆</span><input id="password" class="field-input" type="password" placeholder="アクセスキーを入力" autocomplete="off" autofocus><button class="pw-toggle" id="pwToggle" type="button">表示</button></div></div>
 <div class="login-options"><label class="login-remember"><input id="remember" type="checkbox"> この端末で記憶</label><a class="login-forgot" href="#" id="forgot">アクセスについて</a></div>
-<button class="login-btn" id="loginBtn" type="submit"><span id="btnText">認証する</span></button><div class="login-error" id="error">アクセスキーが正しくありません</div>
+<button class="login-btn" id="loginBtn" type="submit"><span class="btn-text" id="btnText">認証する</span><span class="btn-spinner"><span class="btn-spinner-ring"></span></span></button><div class="login-error" id="error">アクセスキーが正しくありません</div>
 </form><div class="login-footer">AUTHORIZED ACCESS ONLY<br>SECURE SESSION / PRIVATE MODE</div>
 </div></div>
 <script>
@@ -39,41 +46,32 @@ function resize(){canvas.width=innerWidth*devicePixelRatio;canvas.height=innerHe
 resize();addEventListener('resize',resize);
 let dots=Array.from({length:45},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.5+.3,v:(Math.random()-.5)*.18}));
 function draw(){ctx.clearRect(0,0,innerWidth,innerHeight);ctx.globalAlpha=.22;dots.forEach(p=>{p.y+=p.v;if(p.y<0)p.y=innerHeight;if(p.y>innerHeight)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='#d2691e';ctx.fill()});requestAnimationFrame(draw)}draw();
+const intro=document.getElementById('intro'),logo=document.getElementById('introLogo'),tag=document.getElementById('introTagline'),bar=document.getElementById('introBar'),fill=document.getElementById('introBarFill'),hint=document.getElementById('introHint'),main=document.getElementById('mainPage');
+setTimeout(()=>logo.classList.add('visible'),80);setTimeout(()=>tag.classList.add('visible'),360);setTimeout(()=>bar.classList.add('visible'),560);setTimeout(()=>{requestAnimationFrame(()=>{fill.style.transition='width 1.55s cubic-bezier(.4,0,.2,1)';fill.style.width='100%'})},620);setTimeout(()=>hint.classList.add('visible'),850);setTimeout(()=>{logo.classList.add('glitch-active');setTimeout(()=>logo.classList.remove('glitch-active'),260)},1450);setTimeout(()=>{intro.classList.add('hidden');main.classList.add('visible');document.body.classList.add('main-visible')},2050);
 const form=document.getElementById('loginForm'),input=document.getElementById('password'),btn=document.getElementById('loginBtn'),text=document.getElementById('btnText'),err=document.getElementById('error');
 document.getElementById('pwToggle').onclick=()=>{const show=input.type==='password';input.type=show?'text':'password';document.getElementById('pwToggle').textContent=show?'隠す':'表示'};
 document.getElementById('forgot').onclick=e=>{e.preventDefault();alert('この画面のアクセスキーを入力してください。');};
-
-// Secret mode is ON by default. A successful login opens the real
-// about:blank shell in a separate browser window. The original tab becomes Google.
 function secretOn(){try{return localStorage.getItem('choco-secret-mode')!=='off'}catch(e){return true}}
-function shellHtml(){return '<!doctype html><html><head><meta charset="utf-8"><title>about:blank</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><iframe id="secretFrame" allow="autoplay; fullscreen; picture-in-picture"></iframe><script>window.addEventListener("message",function(e){if(e.origin!==location.origin)return;if(!e.data||e.data.type!=="choco-secret-off")return;try{localStorage.setItem("choco-secret-mode","off")}catch(x){};var p=e.data.path||"/";if(p.charAt(0)!=="/")p="/";location.replace(location.origin+p)});<\\/script></body></html>'}
-function openShellImmediately(){
-  const shell=window.open('about:blank','chocoSecretShell','width=1200,height=800,resizable=yes,scrollbars=no');
-  if(!shell)return null;
-  try{shell.document.open();shell.document.write(shellHtml());shell.document.close()}catch(e){try{shell.close()}catch(x){};return null}
-  return shell;
-}
-
+function shellHtml(){return '<!doctype html><html><head><meta charset="utf-8"><title>about:blank</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><iframe id="secretFrame" allow="autoplay; fullscreen; picture-in-picture"></iframe><script>window.addEventListener("message",function(e){if(e.origin!==location.origin)return;if(!e.data||e.data.type!=="choco-secret-off")return;try{localStorage.setItem("choco-secret-mode","off")}catch(x){}var p=e.data.path||"/";if(p.charAt(0)!=="/")p="/";location.replace(location.origin+p)});<\\/script></body></html>'}
+function openShellImmediately(){const shell=window.open('about:blank','chocoSecretShell','width=1200,height=800,resizable=yes,scrollbars=no');if(!shell)return null;try{shell.document.open();shell.document.write(shellHtml());shell.document.close()}catch(e){try{shell.close()}catch(x){};return null}return shell}
 form.addEventListener('submit',async e=>{
- e.preventDefault();err.classList.remove('show');btn.disabled=true;text.textContent='認証中…';
+ e.preventDefault();err.classList.remove('show');btn.disabled=true;btn.classList.add('loading');text.textContent='認証中…';
  let shell=null;
  if(secretOn()){
    shell=openShellImmediately();
-   if(!shell){err.textContent='シークレットウィンドウを開けませんでした。ブラウザのポップアップブロックを確認してください。';err.classList.add('show');btn.disabled=false;text.textContent='認証する';return}
+   if(!shell){err.textContent='シークレットウィンドウを開けませんでした。ブラウザのポップアップブロックを確認してください。';err.classList.add('show');btn.disabled=false;btn.classList.remove('loading');text.textContent='認証する';return}
  }
  try{
   const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value.trim()})});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.ok){if(shell)try{shell.close()}catch(x){};err.textContent=d.message||'アクセスキーが正しくありません';err.classList.add('show');btn.disabled=false;text.textContent='認証する';return}
+  if(!r.ok||!d.ok){if(shell)try{shell.close()}catch(x){};err.textContent=d.message||'アクセスキーが正しくありません';err.classList.add('show');btn.disabled=false;btn.classList.remove('loading');text.textContent='認証する';return}
   try{sessionStorage.setItem('choco-visit-unlocked','on')}catch(x){}
   if(shell){
     const frameUrl=location.origin+'/?__secret_shell=1';
     try{const frame=shell.document.getElementById('secretFrame');frame.src=frameUrl;shell.focus()}catch(x){}
     location.replace('https://www.google.com/');
-  }else{
-    location.replace('/?__secret_auth=1');
-  }
- }catch(e){if(shell)try{shell.close()}catch(x){};err.textContent='ネットワークエラーが発生しました';err.classList.add('show');btn.disabled=false;text.textContent='認証する'}
+  }else{location.replace('/?__secret_auth=1')}
+ }catch(e){if(shell)try{shell.close()}catch(x){};err.textContent='ネットワークエラーが発生しました';err.classList.add('show');btn.disabled=false;btn.classList.remove('loading');text.textContent='認証する'}
 });
 })();
 </script>
