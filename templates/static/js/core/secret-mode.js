@@ -64,7 +64,7 @@
     var html = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>about:blank</title>' +
       '<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{display:block;width:100%;height:100%;border:0}</style>' +
       '</head><body><iframe id="secretFrame" src="' + frameUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; fullscreen; picture-in-picture"></iframe>' +
-      '<script>window.addEventListener("message",function(e){if(e.origin!==location.origin)return;if(!e.data||e.data.type!=="choco-secret-off")return;var p=e.data.path||"/";if(p.charAt(0)!=="/")p="/";location.replace(location.origin+p)});<\\/script>' +
+      '<script>window.addEventListener("message",function(e){if(e.origin!==location.origin)return;if(!e.data||e.data.type!=="choco-secret-off")return;var p=e.data.path||"/";if(p.charAt(0)!=="/")p="/";try{localStorage.setItem("choco-secret-mode","off")}catch(x){};location.replace(location.origin+p)});<\\/script>' +
       '</body></html>';
     shell.document.open();
     shell.document.write(html);
@@ -99,11 +99,18 @@
     updateButton(btn);
 
     if (isShellFrame()) {
-      // Keep this top-level browsing context authenticated so the normal
-      // Choco-Tube page can appear immediately after leaving about:blank.
       try { sessionStorage.setItem('choco-visit-unlocked', ON); } catch (e) {}
+      var path = currentPath();
+      // First try direct top-level navigation. This is reliable because the
+      // secret page is loaded as a same-origin iframe inside the about:blank
+      // shell. If the browser blocks that assignment, use the shell's message
+      // handler as a fallback.
       try {
-        window.parent.postMessage({ type: 'choco-secret-off', path: currentPath() }, location.origin);
+        window.top.location.replace(location.origin + path);
+        return;
+      } catch (e) {}
+      try {
+        window.parent.postMessage({ type: 'choco-secret-off', path: path }, location.origin);
       } catch (e) {
         location.reload();
       }
