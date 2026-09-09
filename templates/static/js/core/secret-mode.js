@@ -2,9 +2,11 @@
   'use strict';
 
   var STORAGE_KEY = 'choco-secret-mode';
-  var VISIT_KEY = 'choco-visit-unlocked';
+  var SHELL_KEY = 'choco-secret-shell';
   var ON = 'on';
   var OFF = 'off';
+  var SHELL_NAME = 'chocoSecretShell';
+  var GOOGLE_URL = 'https://www.google.com/';
   var started = false;
 
   function isEnabled() {
@@ -16,33 +18,21 @@
     try { localStorage.setItem(STORAGE_KEY, enabled ? ON : OFF); } catch (e) {}
   }
 
-  function hasUnlockedVisit() {
-    try { return sessionStorage.getItem(VISIT_KEY) === ON; }
-    catch (e) { return false; }
+  function isShellFrame() {
+    return window.top !== window.self;
   }
 
-  function markAuthenticatedVisit() {
+  function markShellFrame() {
+    if (!isShellFrame()) return false;
     try {
+      sessionStorage.setItem(SHELL_KEY, ON);
       var u = new URL(location.href);
-      if (u.searchParams.get('__secret_auth') === '1') {
-        sessionStorage.setItem(VISIT_KEY, ON);
-        u.searchParams.delete('__secret_auth');
+      if (u.searchParams.get('__secret_shell') === '1') {
+        u.searchParams.delete('__secret_shell');
         history.replaceState({}, '', u.pathname + u.search + u.hash);
-        return true;
       }
     } catch (e) {}
-    return false;
-  }
-
-  // The secret mode is intentionally kept inside the same Choco-Tube page.
-  // No popup, about:blank iframe, or second site is created. This makes ON/OFF
-  // reversible and keeps the whole session in one browsing context.
-  function applyPageMode() {
-    var on = isEnabled();
-    document.documentElement.classList.toggle('choco-secret-mode', on);
-    document.body.classList.toggle('choco-secret-mode', on);
-    document.documentElement.setAttribute('data-secret-mode', on ? 'on' : 'off');
-    document.title = on ? 'about:blank' : 'Choco-Tube';
+    return true;
   }
 
   function updateButton(btn) {
@@ -54,25 +44,76 @@
     btn.title = on ? 'シークレットモード：ON' : 'シークレットモード：OFF';
   }
 
-  function reloadCurrentPage() {
-    // Re-run the page with the new setting, but stay on the exact same URL/site.
-    // Cache-busting is unnecessary and would create a new navigation target.
-    location.reload();
+  function shellReturnPath() {
+    var u = new URL(location.href);
+    u.searchParams.delete('__secret_shell');
+    return u.pathname + u.search + u.hash;
+  }
+
+  function buildShell(targetPath) {
+    var shell = window.open('about:blank', SHELL_NAME, 'popup');
+    if (!shell) {
+      window.alert('シークレット画面を開けませんでした。ブラウザのポップアップブロックを解除してください。');
+      return null;
+    }
+
+    var origin = location.origin;
+    var frameUrl = origin + (targetPath || '/') + (targetPath && targetPath.indexOf('?') >= 0 ? '&' : '?') + '__secret_shell=1';
+    var html = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>about:blank</title>' +
+      '<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{display:block;width:100%;height:100%;border:0}</style>' +
+      '</head><body><iframe id="secretFrame" src="' + frameUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; fullscreen; picture-in-picture"></iframe>' +
+      '<script>window.addEventListener("message",function(e){if(e.origin!==location.origin)return;if(!e.data||e.data.type!=="choco-secret-off")return;try{localStorage.setItem("choco-secret-mode","off")}catch(x){};var p=e.data.path||"/";if(p.charAt(0)!=="/")p="/";location.replace(location.origin+p)});<\/script>' +
+      '</body></html>';
+    shell.document.open();
+    shell.document.write(html);
+    shell.document.close();
+    try { shell.focus(); } catch (e) {}
+    return shell;
+  }
+
+  function enableSecretMode(btn) {
+    setEnabled(true);
+    updateButton(btn);
+
+    if (isShellFrame()) {
+      // Already inside the about:blank shell. Keep the shell and simply reload
+      // this frame so ON takes effect without opening a second window.
+      location.reload();
+      return;
+    }
+
+    var shell = buildShell(shellReturnPath());
+    if (!shell) {
+      setEnabled(false);
+      updateButton(btn);
+      return;
+    }
+
+    // Replace the original Choco-Tube history entry with Google. The usable
+    // Choco-Tube page now lives only inside the about:blank shell.
+    setTimeout(function () {
+      try { location.replace(GOOGLE_URL); }
+      catch (e) { location.href = GOOGLE_URL; }
+    }, 0);
   }
 
   function disableSecretMode(btn) {
     if (!window.confirm('シークレットモードをOFFにしますか？')) return;
     setEnabled(false);
     updateButton(btn);
-    applyPageMode();
-    reloadCurrentPage();
-  }
 
-  function enableSecretMode(btn) {
-    setEnabled(true);
-    updateButton(btn);
-    applyPageMode();
-    reloadCurrentPage();
+    if (isShellFrame()) {
+      // The top-level browsing context is about:blank. Ask it to leave the
+      // shell and show the same Choco-Tube page normally.
+      try {
+        window.parent.postMessage({ type: 'choco-secret-off', path: shellReturnPath() }, location.origin);
+      } catch (e) {
+        location.reload();
+      }
+      return;
+    }
+
+    location.reload();
   }
 
   function bindButton(btn) {
@@ -99,27 +140,32 @@
     footer.insertBefore(btn, footer.firstChild);
   }
 
-  window.addEventListener('storage', function (e) {
-    if (e.key !== STORAGE_KEY) return;
-    applyPageMode();
-    var btn = document.getElementById('secretModeBtn');
-    if (btn) updateButton(btn);
-  });
-
   function start() {
     if (started) return;
     started = true;
 
-    var auth = markAuthenticatedVisit();
-
-    // A new tab/window has no unlocked session, so show the password gate.
-    // Once authenticated, sessionStorage keeps the current tab unlocked.
-    if (!auth && !hasUnlockedVisit()) {
-      location.replace('/login');
-      return;
+    var shellFrame = markShellFrame();
+    if (!shellFrame) {
+      // Normal top-level page: it must be unlocked through the login screen.
+      // The login page itself is outside base.html and is therefore unaffected.
+      var unlocked = false;
+      try { unlocked = sessionStorage.getItem('choco-visit-unlocked') === ON; } catch (e) {}
+      if (!unlocked) {
+        location.replace('/login');
+        return;
+      }
     }
 
-    applyPageMode();
+    // If we arrived here as the authenticated login target, consume the marker
+    // without creating another navigation entry.
+    try {
+      var u = new URL(location.href);
+      if (u.searchParams.get('__secret_auth') === '1') {
+        sessionStorage.setItem('choco-visit-unlocked', ON);
+        u.searchParams.delete('__secret_auth');
+        history.replaceState({}, '', u.pathname + u.search + u.hash);
+      }
+    } catch (e) {}
   }
 
   document.addEventListener('DOMContentLoaded', function () {
