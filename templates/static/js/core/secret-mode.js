@@ -2,61 +2,66 @@
   'use strict';
 
   var STORAGE_KEY = 'choco-secret-mode';
+  var SHELL_KEY = 'choco-secret-shell';
+  var SHELL_PARAM = '__secret_shell=1';
   var ON = 'on';
 
   function isEnabled() {
     return localStorage.getItem(STORAGE_KEY) === ON;
   }
 
-  function getVideoIdFromUrl(url) {
+  function isShellPage() {
     try {
-      var u = new URL(url, window.location.origin);
-      var m = u.pathname.match(/^\/(?:watch|video)\/([^/?#]+)/);
-      if (m) return m[1];
-      return u.searchParams.get('v') || u.searchParams.get('video') || u.searchParams.get('id');
+      return sessionStorage.getItem(SHELL_KEY) === ON;
     } catch (e) {
-      return null;
+      return false;
     }
   }
 
-  function openSecretPlayer(videoId, originalUrl) {
-    if (!videoId) return false;
+  function markShellPage() {
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('__secret_shell') === '1') {
+        sessionStorage.setItem(SHELL_KEY, ON);
+        url.searchParams.delete('__secret_shell');
+        history.replaceState({}, '', url.pathname + url.search + url.hash);
+        return true;
+      }
+    } catch (e) {}
+    return isShellPage();
+  }
 
-    var win = window.open('about:blank', '_blank');
-    if (!win) return false;
+  function addShellParam(url) {
+    try {
+      var u = new URL(url, window.location.origin);
+      u.searchParams.set('__secret_shell', '1');
+      return u.href;
+    } catch (e) {
+      return url;
+    }
+  }
 
-    var autoplay = '1';
-    var embed = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(videoId) + '?autoplay=' + autoplay + '&rel=0';
+  function openSecretShell() {
+    var shell = window.open('about:blank', '_blank');
+    if (!shell) return false;
 
-    var safeUrl = originalUrl || '';
-    var html = '<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Choco-tube-plus - シークレット再生</title><style>' +
+    var siteUrl = addShellParam(window.location.href);
+    var html = '<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Choco-tube-plus</title><style>' +
       'html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}' +
       'iframe{border:0;width:100%;height:100%;display:block}' +
-      '.badge{position:fixed;z-index:10;top:12px;left:12px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.65);color:#fff;font:12px system-ui,sans-serif;opacity:.25;transition:opacity .2s}.badge:hover{opacity:1}' +
       '</style></head><body>' +
-      '<iframe src="' + embed.replace(/"/g, '&quot;') + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>' +
-      '<div class="badge">Choco-tube-plus · シークレットモード</div>' +
+      '<iframe src="' + siteUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
       '</body></html>';
 
     try {
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-      try { win.history.replaceState({}, '', 'about:blank'); } catch (e) {}
+      shell.document.open();
+      shell.document.write(html);
+      shell.document.close();
+      try { shell.history.replaceState({}, '', 'about:blank'); } catch (e) {}
       return true;
     } catch (e) {
-      try { win.location.href = safeUrl; } catch (_) {}
-      return true;
+      return false;
     }
-  }
-
-  function shouldIntercept(anchor, event) {
-    if (!isEnabled() || !anchor || event.defaultPrevented) return false;
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
-    if (anchor.target === '_blank' || anchor.hasAttribute('download')) return false;
-    var href = anchor.getAttribute('href');
-    if (!href) return false;
-    return !!getVideoIdFromUrl(href);
   }
 
   function updateButton(btn) {
@@ -65,7 +70,7 @@
     btn.classList.toggle('secret-mode-on', enabled);
     var label = btn.querySelector('[data-secret-label]');
     if (label) label.textContent = enabled ? 'シークレット ON' : 'シークレット OFF';
-    btn.title = enabled ? 'シークレットモード：ON（動画はabout:blankで開きます）' : 'シークレットモード：OFF';
+    btn.title = enabled ? 'シークレットモード：ON（サイトをabout:blankで開きます）' : 'シークレットモード：OFF';
   }
 
   function bindButton(btn) {
@@ -73,8 +78,13 @@
     btn.dataset.secretBound = '1';
     updateButton(btn);
     btn.addEventListener('click', function () {
-      localStorage.setItem(STORAGE_KEY, isEnabled() ? 'off' : ON);
+      var nextEnabled = !isEnabled();
+      localStorage.setItem(STORAGE_KEY, nextEnabled ? ON : 'off');
       updateButton(btn);
+
+      if (nextEnabled && !isShellPage()) {
+        openSecretShell();
+      }
     });
   }
 
@@ -97,24 +107,20 @@
     footer.insertBefore(btn, footer.firstChild);
   }
 
-  document.addEventListener('click', function (event) {
-    if (!isEnabled()) return;
-    var anchor = event.target.closest ? event.target.closest('a[href]') : null;
-    if (!shouldIntercept(anchor, event)) return;
+  function startSecretMode() {
+    var shellPage = markShellPage();
+    if (!isEnabled() || shellPage || isShellPage()) return;
 
-    var href = anchor.href;
-    var videoId = getVideoIdFromUrl(href);
-    if (!videoId) return;
-
-    if (openSecretPlayer(videoId, href)) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  }, true);
+    // When secret mode is already ON, open the site inside an about:blank shell
+    // immediately. Video links inside the shell are left completely untouched.
+    openSecretShell();
+  }
 
   document.addEventListener('DOMContentLoaded', function () {
     addButton();
+    startSecretMode();
   });
 
   addButton();
+  startSecretMode();
 })();
