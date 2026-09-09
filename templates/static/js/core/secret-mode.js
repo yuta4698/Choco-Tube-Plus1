@@ -3,8 +3,8 @@
 
   var STORAGE_KEY = 'choco-secret-mode';
   var SHELL_KEY = 'choco-secret-shell';
-  var SHELL_PARAM = '__secret_shell=1';
   var ON = 'on';
+  var SHELL_NAME = 'chocoSecretShell';
 
   function isEnabled() {
     return localStorage.getItem(STORAGE_KEY) === ON;
@@ -41,8 +41,15 @@
     }
   }
 
+  function closeSecretShell() {
+    try {
+      var shell = window.open('', SHELL_NAME);
+      if (shell && !shell.closed) shell.close();
+    } catch (e) {}
+  }
+
   function openSecretShell() {
-    var shell = window.open('about:blank', '_blank');
+    var shell = window.open('about:blank', SHELL_NAME);
     if (!shell) return false;
 
     var siteUrl = addShellParam(window.location.href);
@@ -50,7 +57,8 @@
       'html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}' +
       'iframe{border:0;width:100%;height:100%;display:block}' +
       '</style></head><body>' +
-      '<iframe src="' + siteUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
+      '<iframe id="secretSiteFrame" src="' + siteUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
+      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){try{window.close()}catch(_){}}});<\/script>' +
       '</body></html>';
 
     try {
@@ -73,18 +81,33 @@
     btn.title = enabled ? 'シークレットモード：ON（サイトをabout:blankで開きます）' : 'シークレットモード：OFF';
   }
 
+  function disableSecretMode(btn) {
+    var ok = window.confirm('シークレットモードをOFFにすると、通常モードで開いた動画は履歴に残ります。\n\nシークレットモードをOFFにしますか？');
+    if (!ok) return;
+
+    localStorage.setItem(STORAGE_KEY, 'off');
+    updateButton(btn);
+
+    if (isShellPage()) {
+      try { window.parent.postMessage({ type: 'choco-secret-off' }, '*'); } catch (e) {}
+    } else {
+      closeSecretShell();
+    }
+  }
+
   function bindButton(btn) {
     if (!btn || btn.dataset.secretBound === '1') return;
     btn.dataset.secretBound = '1';
     updateButton(btn);
     btn.addEventListener('click', function () {
-      var nextEnabled = !isEnabled();
-      localStorage.setItem(STORAGE_KEY, nextEnabled ? ON : 'off');
-      updateButton(btn);
-
-      if (nextEnabled && !isShellPage()) {
-        openSecretShell();
+      if (isEnabled()) {
+        disableSecretMode(btn);
+        return;
       }
+
+      localStorage.setItem(STORAGE_KEY, ON);
+      updateButton(btn);
+      if (!isShellPage()) openSecretShell();
     });
   }
 
