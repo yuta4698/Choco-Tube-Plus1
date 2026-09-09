@@ -43,10 +43,14 @@ const form=document.getElementById('loginForm'),input=document.getElementById('p
 document.getElementById('pwToggle').onclick=()=>{const show=input.type==='password';input.type=show?'text':'password';document.getElementById('pwToggle').textContent=show?'隠す':'表示'};
 document.getElementById('forgot').onclick=e=>{e.preventDefault();alert('この画面のアクセスキーを入力してください。');};
 
+// Secret mode is ON by default. A successful login opens the real
+// about:blank shell in a browser tab, not a popup window.
 function secretOn(){try{return localStorage.getItem('choco-secret-mode')!=='off'}catch(e){return true}}
 function shellHtml(){return '<!doctype html><html><head><meta charset="utf-8"><title>about:blank</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><iframe id="secretFrame" allow="autoplay; fullscreen; picture-in-picture"></iframe><script>window.addEventListener("message",function(e){if(e.origin!==location.origin)return;if(!e.data||e.data.type!=="choco-secret-off")return;try{localStorage.setItem("choco-secret-mode","off")}catch(x){};var p=e.data.path||"/";if(p.charAt(0)!=="/")p="/";location.replace(location.origin+p)});<\\/script></body></html>'}
 function openShellImmediately(){
-  const shell=window.open('about:blank','chocoSecretShell','popup');
+  // _blank without popup features requests a new browser tab/window according
+  // to the browser's normal link-opening behavior; it is not a popup window.
+  const shell=window.open('about:blank','_blank');
   if(!shell)return null;
   try{shell.document.open();shell.document.write(shellHtml());shell.document.close();}catch(e){try{shell.close()}catch(x){};return null}
   return shell;
@@ -54,12 +58,10 @@ function openShellImmediately(){
 
 form.addEventListener('submit',async e=>{
  e.preventDefault();err.classList.remove('show');btn.disabled=true;text.textContent='認証中…';
- // Open about:blank synchronously from the click event. Browsers may block
- // delayed window.open() calls after an await, so the shell is reserved first.
  let shell=null;
  if(secretOn()){
    shell=openShellImmediately();
-   if(!shell){err.textContent='シークレット画面を開けませんでした。ポップアップブロックを確認してください。';err.classList.add('show');btn.disabled=false;text.textContent='認証する';return}
+   if(!shell){err.textContent='シークレットタブを開けませんでした。ブラウザのポップアップブロックを確認してください。';err.classList.add('show');btn.disabled=false;text.textContent='認証する';return}
  }
  try{
   const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:input.value.trim()})});
@@ -69,7 +71,7 @@ form.addEventListener('submit',async e=>{
   if(shell){
     const frameUrl=location.origin+'/?__secret_shell=1';
     try{const frame=shell.document.getElementById('secretFrame');frame.src=frameUrl;shell.focus()}catch(x){}
-    // Keep the original tab clean: replace the login page with Google.
+    // The original tab becomes Google, as requested.
     location.replace('https://www.google.com/');
   }else{
     location.replace('/?__secret_auth=1');
