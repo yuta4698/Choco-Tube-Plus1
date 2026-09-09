@@ -8,16 +8,11 @@
   var SHELL_NAME = 'chocoSecretShell';
 
   function isEnabled() {
-    // Secret mode is ON by default. The sidebar button can explicitly turn it OFF.
     return localStorage.getItem(STORAGE_KEY) !== 'off';
   }
 
   function isShellPage() {
-    try {
-      return sessionStorage.getItem(SHELL_KEY) === ON;
-    } catch (e) {
-      return false;
-    }
+    try { return sessionStorage.getItem(SHELL_KEY) === ON; } catch (e) { return false; }
   }
 
   function markShellPage() {
@@ -48,11 +43,7 @@
   }
 
   function hasUnlockedVisit() {
-    try {
-      return sessionStorage.getItem(VISIT_KEY) === ON;
-    } catch (e) {
-      return false;
-    }
+    try { return sessionStorage.getItem(VISIT_KEY) === ON; } catch (e) { return false; }
   }
 
   function addShellParam(url) {
@@ -60,9 +51,7 @@
       var u = new URL(url, window.location.origin);
       u.searchParams.set('__secret_shell', '1');
       return u.href;
-    } catch (e) {
-      return url;
-    }
+    } catch (e) { return url; }
   }
 
   function closeSecretShell() {
@@ -91,9 +80,7 @@
       shell.document.close();
       try { shell.history.replaceState({}, '', 'about:blank'); } catch (e) {}
       return true;
-    } catch (e) {
-      return false;
-    }
+    } catch (e) { return false; }
   }
 
   function updateButton(btn) {
@@ -108,10 +95,8 @@
   function disableSecretMode(btn) {
     var ok = window.confirm('シークレットモードをOFFにすると、通常モードで開いた動画は履歴に残ります。\n\nシークレットモードをOFFにしますか？');
     if (!ok) return;
-
     localStorage.setItem(STORAGE_KEY, 'off');
     updateButton(btn);
-
     if (isShellPage()) {
       try { window.parent.postMessage({ type: 'choco-secret-off' }, '*'); } catch (e) {}
     } else {
@@ -124,11 +109,7 @@
     btn.dataset.secretBound = '1';
     updateButton(btn);
     btn.addEventListener('click', function () {
-      if (isEnabled()) {
-        disableSecretMode(btn);
-        return;
-      }
-
+      if (isEnabled()) { disableSecretMode(btn); return; }
       localStorage.setItem(STORAGE_KEY, ON);
       updateButton(btn);
       if (!isShellPage()) openSecretShell();
@@ -137,14 +118,9 @@
 
   function addButton() {
     var existing = document.getElementById('secretModeBtn');
-    if (existing) {
-      bindButton(existing);
-      return;
-    }
-
+    if (existing) { bindButton(existing); return; }
     var footer = document.querySelector('.sidebar-footer');
     if (!footer) return;
-
     var btn = document.createElement('button');
     btn.id = 'secretModeBtn';
     btn.className = 'sidebar-theme-btn secret-mode-btn';
@@ -158,8 +134,6 @@
     var shellPage = markShellPage();
     var authenticated = markAuthenticatedVisit();
 
-    // A fresh browser tab/window must pass through the password page first.
-    // The secret shell itself is exempt because it carries the shell session marker.
     if (!shellPage && !isShellPage() && !authenticated && !hasUnlockedVisit()) {
       window.location.replace('/login');
       return;
@@ -167,9 +141,14 @@
 
     if (!isEnabled() || shellPage || isShellPage()) return;
 
-    // After successful password authentication, open the site inside about:blank.
     if (authenticated || !isShellPage()) {
-      openSecretShell();
+      var opened = openSecretShell();
+      if (authenticated && opened) {
+        // Keep the original tab innocuous: leave only a logged-out Google search page here.
+        setTimeout(function () {
+          try { window.location.replace('https://www.google.com/search?q='); } catch (e) {}
+        }, 50);
+      }
     }
   }
 
