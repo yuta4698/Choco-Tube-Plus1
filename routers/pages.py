@@ -149,7 +149,9 @@ async def api_quiz_login(request: Request):
         return JSONResponse({"ok": False, "message": "正解数が足りません"}, status_code=401)
 
     seen_welcome = request.cookies.get(WELCOME_COOKIE_NAME)
-    redirect_url = "/" if seen_welcome else "/about"
+    redirect_url = "/?__secret_auth=1"
+    if not seen_welcome:
+        redirect_url = "/about?__secret_auth=1"
     response = JSONResponse({"ok": True, "redirect": redirect_url})
     response.set_cookie(
         AUTH_COOKIE_NAME,
@@ -174,7 +176,9 @@ async def api_login(request: Request):
         return JSONResponse({"ok": False, "message": "パスワードが正しくありません"}, status_code=401)
 
     seen_welcome = request.cookies.get(WELCOME_COOKIE_NAME)
-    redirect_url = "/" if seen_welcome else "/about"
+    redirect_url = "/?__secret_auth=1"
+    if not seen_welcome:
+        redirect_url = "/about?__secret_auth=1"
     response = JSONResponse({"ok": True, "redirect": redirect_url})
     response.set_cookie(
         AUTH_COOKIE_NAME,
