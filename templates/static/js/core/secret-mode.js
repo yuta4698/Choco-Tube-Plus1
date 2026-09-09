@@ -6,6 +6,7 @@
   var ON = 'on';
   var OFF = 'off';
   var GOOGLE_URL = 'https://www.google.com/';
+  var SHELL_NAME = 'chocoSecretShell';
   var started = false;
 
   function isEnabled() {
@@ -15,10 +16,6 @@
 
   function setEnabled(enabled) {
     try { localStorage.setItem(STORAGE_KEY, enabled ? ON : OFF); } catch (e) {}
-  }
-
-  function markUnlockedVisit() {
-    try { sessionStorage.setItem('choco-visit-unlocked', ON); } catch (e) {}
   }
 
   function isShellFrame() {
@@ -55,11 +52,9 @@
   }
 
   function buildShell(targetPath) {
-    // about:blank をトップレベルに開き、その中でChoco-Tubeを動かす。
-    // ブラウザ側の設定によってはタブではなくウィンドウになる場合がある。
-    var shell = window.open('about:blank', '_blank');
+    var shell = window.open('about:blank', SHELL_NAME, 'width=1200,height=800,resizable=yes,scrollbars=no');
     if (!shell) {
-      window.alert('シークレットページを開けませんでした。ブラウザのポップアップブロックを確認してください。');
+      window.alert('シークレットウィンドウを開けませんでした。ブラウザのポップアップブロックを確認してください。');
       return null;
     }
 
@@ -104,8 +99,9 @@
     updateButton(btn);
 
     if (isShellFrame()) {
-      // OFF後に戻ったChoco-Tube側でも認証済み状態を維持する。
-      markUnlockedVisit();
+      // Keep this top-level browsing context authenticated so the normal
+      // Choco-Tube page can appear immediately after leaving about:blank.
+      try { sessionStorage.setItem('choco-visit-unlocked', ON); } catch (e) {}
       try {
         window.parent.postMessage({ type: 'choco-secret-off', path: currentPath() }, location.origin);
       } catch (e) {
@@ -158,7 +154,7 @@
     try {
       var u = new URL(location.href);
       if (u.searchParams.get('__secret_auth') === '1') {
-        markUnlockedVisit();
+        sessionStorage.setItem('choco-visit-unlocked', ON);
         u.searchParams.delete('__secret_auth');
         history.replaceState({}, '', u.pathname + u.search + u.hash);
       }
