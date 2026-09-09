@@ -42,7 +42,7 @@
 
   function goGoogle() { location.replace(GOOGLE_URL); }
 
-  function shellUrl() {
+  function makeShellUrl() {
     var u = new URL(location.origin + location.pathname + location.search + location.hash);
     u.searchParams.set('__secret_shell', '1');
     return u.href;
@@ -51,11 +51,11 @@
   function openSecretShell() {
     var shell = window.open('about:blank', SHELL_NAME);
     if (!shell) return false;
-    var src = shellUrl().replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    var src = makeShellUrl().replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     var origin = location.origin.replace(/"/g, '&quot;');
-    var html = '<!doctype html><html><head><meta charset="UTF-8"><title>Private Access</title><style>html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head><body>' +
+    var html = '<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>about:blank</title><style>html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}iframe{border:0;width:100%;height:100%;display:block}</style></head><body>' +
       '<iframe id="secretSiteFrame" src="' + src + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
-      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){var f=document.getElementById("secretSiteFrame");if(f){f.src="' + origin + '/";}else{location.replace("' + origin + '/");}}});<\\/script>' +
+      '<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="choco-secret-off"){location.replace("' + origin + '/");}});<\\/script>' +
       '</body></html>';
     try {
       shell.document.open();
@@ -93,7 +93,11 @@
     updateButton(btn);
     btn.addEventListener('click', function () {
       if (isEnabled()) disableSecretMode(btn);
-      else { localStorage.setItem(STORAGE_KEY, ON); updateButton(btn); if (!isShellPage()) openSecretShell(); }
+      else {
+        localStorage.setItem(STORAGE_KEY, ON);
+        updateButton(btn);
+        if (!isShellPage()) openSecretShell();
+      }
     });
   }
 
@@ -117,7 +121,7 @@
     var shell = markShellPage();
     var auth = markAuthenticatedVisit();
 
-    // Never let a fresh tab render the real site. The login page is reached directly.
+    // A fresh normal tab is redirected before protected page content can be used.
     if (!shell && !isShellPage() && !auth && !hasUnlockedVisit()) {
       location.replace('/login');
       return;
@@ -125,10 +129,7 @@
     if (!isEnabled() || shell || isShellPage()) return;
 
     var opened = openSecretShell();
-    if (auth && opened) {
-      // Immediately make the original tab a logged-out Google page.
-      location.replace(GOOGLE_URL);
-    }
+    if (auth && opened) goGoogle();
   }
 
   document.addEventListener('DOMContentLoaded', function () { addButton(); start(); });
