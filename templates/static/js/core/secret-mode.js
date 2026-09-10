@@ -6,7 +6,6 @@
   var ON = 'on';
   var OFF = 'off';
   var GOOGLE_URL = 'https://www.google.com/';
-  var SHELL_NAME = 'chocoSecretShell';
   var started = false;
 
   function isEnabled() {
@@ -52,7 +51,11 @@
   }
 
   function buildShell(targetPath) {
-    var shell = window.open('about:blank', SHELL_NAME, 'width=1200,height=800,resizable=yes,scrollbars=no');
+    // Do not reuse the previous named window. A new unique window name means
+    // every ON action gets a fresh about:blank secret window, including the
+    // second, third, and later activations.
+    var shellName = 'chocoSecretShell_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+    var shell = window.open('about:blank', shellName, 'width=1200,height=800,resizable=yes,scrollbars=no');
     if (!shell) {
       window.alert('シークレットウィンドウを開けませんでした。ブラウザのポップアップブロックを確認してください。');
       return null;
@@ -78,6 +81,8 @@
     updateButton(btn);
 
     if (isShellFrame()) {
+      // If the button is inside a secret shell, leave the current shell in
+      // place. This avoids nesting secret windows accidentally.
       location.reload();
       return;
     }
@@ -101,10 +106,6 @@
     if (isShellFrame()) {
       try { sessionStorage.setItem('choco-visit-unlocked', ON); } catch (e) {}
       var path = currentPath();
-      // First try direct top-level navigation. This is reliable because the
-      // secret page is loaded as a same-origin iframe inside the about:blank
-      // shell. If the browser blocks that assignment, use the shell's message
-      // handler as a fallback.
       try {
         window.top.location.replace(location.origin + path);
         return;
